@@ -260,3 +260,54 @@ class Presentation(BaseModel):
     design_system: DesignSystem
     slides: list[Slide] = Field(min_length=1)
     metadata: Metadata
+
+
+# ─── Plan / Request / Response models ────────────────────────────────
+
+
+class SlideOutline(BaseModel):
+    """LLM이 생성하는 슬라이드 아웃라인 (상세 콘텐츠 생성 전)"""
+
+    order: int = Field(ge=0)
+    layout_type: LayoutType
+    title: str
+    key_points: list[str] = Field(default_factory=list, max_length=5)
+    speaker_notes: str = ""
+    needs_image: bool = False
+    image_description: Optional[str] = None
+
+
+class PresentationPlan(BaseModel):
+    """LLM이 생성하는 프레젠테이션 계획 (아웃라인)"""
+
+    title: str
+    design_system: DesignSystem
+    slides: list[SlideOutline]
+    metadata: Metadata
+
+
+class GeneratePlanRequest(BaseModel):
+    topic: str
+    requirements: Optional[str] = None
+    style: Optional[str] = None
+    slide_count: Optional[int] = Field(default=None, ge=3, le=30)
+    language: Language = Language.ko
+
+
+class GenerateFullRequest(BaseModel):
+    plan: PresentationPlan
+
+
+class GenerateImageRequest(BaseModel):
+    prompt: str
+    style: Optional[str] = None
+    size: Optional[str] = "1024x576"
+
+
+class ExportRequest(BaseModel):
+    presentation: Presentation
+
+
+class ExportPngRequest(BaseModel):
+    presentation: Presentation
+    slide_index: int = Field(ge=0)
