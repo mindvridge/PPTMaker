@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deckcraft.dev/schemas/presentation.json",
+  "title": "DeckCraft Presentation Schema",
+  "description": "AI PPT 생성 시스템의 프론트엔드(Fabric.js)와 백엔드(python-pptx)를 연결하는 유일한 인터페이스",
+  "type": "object",
+  "required": ["id", "title", "design_system", "slides", "metadata"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string" },
+    "design_system": { "$ref": "#/$defs/DesignSystem" },
+    "slides": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Slide" },
+      "minItems": 1
+    },
+    "metadata": { "$ref": "#/$defs/Metadata" }
+  },
+  "$defs": {
+    "Metadata": {
+      "type": "object",
+      "required": ["created_at", "language", "aspect_ratio"],
+      "properties": {
+        "created_at": { "type": "string", "format": "date-time" },
+        "language": { "type": "string", "enum": ["ko", "en"] },
+        "aspect_ratio": { "type": "string", "enum": ["16:9", "4:3"] }
+      }
+    },
+    "DesignSystem": {
+      "type": "object",
+      "required": ["color_palette", "fonts", "style_preset"],
+      "properties": {
+        "color_palette": { "$ref": "#/$defs/ColorPalette" },
+        "fonts": { "$ref": "#/$defs/Fonts" },
+        "style_preset": {
+          "type": "string",
+          "enum": ["modern_minimal", "corporate", "creative", "academic"]
+        }
+      }
+    },
+    "ColorPalette": {
+      "type": "object",
+      "required": ["primary", "secondary", "accent", "background", "surface", "text_primary", "text_secondary"],
+      "properties": {
+        "primary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "secondary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "accent": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "background": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "surface": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "text_primary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "text_secondary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+      }
+    },
+    "Fonts": {
+      "type": "object",
+      "required": ["title", "subtitle", "body", "caption"],
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "body": { "type": "string" },
+        "caption": { "type": "string" }
+      }
+    },
+    "Slide": {
+      "type": "object",
+      "required": ["id", "order", "layout_type", "background", "elements", "speaker_notes"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "order": { "type": "integer", "minimum": 0 },
+        "layout_type": { "$ref": "#/$defs/LayoutType" },
+        "background": { "$ref": "#/$defs/Background" },
+        "elements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SlideElement" }
+        },
+        "speaker_notes": { "type": "string" },
+        "transition": { "type": "string" }
+      }
+    },
+    "LayoutType": {
+      "type": "string",
+      "enum": [
+        "title_hero",
+        "title_image",
+        "content_bullets",
+        "two_column",
+        "three_column",
+        "image_text_left",
+        "image_text_right",
+        "full_image",
+        "chart_with_text",
+        "comparison",
+        "timeline",
+        "stats_kpi",
+        "quote",
+        "section_header",
+        "table",
+        "ending",
+        "blank"
+      ]
+    },
+    "SlideElement": {
+      "type": "object",
+      "required": ["id", "type", "position", "z_index"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": {
+          "type": "string",
+          "enum": ["text", "image", "shape", "chart", "icon", "table"]
+        },
+        "position": { "$ref": "#/$defs/Position" },
+        "rotation": { "type": "number", "default": 0 },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
+        "z_index": { "type": "integer" },
+        "text_props": { "$ref": "#/$defs/TextProps" },
+        "image_props": { "$ref": "#/$defs/ImageProps" },
+        "shape_props": { "$ref": "#/$defs/ShapeProps" },
+        "chart_props": { "$ref": "#/$defs/ChartProps" },
+        "table_props": { "$ref": "#/$defs/TableProps" }
+      }
+    },
+    "Position": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 100 },
+        "y": { "type": "number", "minimum": 0, "maximum": 100 },
+        "width": { "type": "number", "minimum": 0, "maximum": 100 },
+        "height": { "type": "number", "minimum": 0, "maximum": 100 }
+      },
+      "description": "퍼센트 좌표 (0-100)"
+    },
+    "TextProps": {
+      "type": "object",
+      "required": ["content", "font_family", "font_size", "font_weight", "color", "align", "vertical_align"],
+      "properties": {
+        "content": { "type": "string", "description": "마크다운 서브셋 (볼드, 이탤릭, 컬러)" },
+        "font_family": { "type": "string" },
+        "font_size": { "type": "number", "minimum": 1, "description": "pt 단위" },
+        "font_weight": { "type": "string", "enum": ["normal", "bold"] },
+        "color": { "type": "string", "description": "hex 색상 또는 design_system 참조 키 (e.g. 'primary')" },
+        "align": { "type": "string", "enum": ["left", "center", "right"] },
+        "vertical_align": { "type": "string", "enum": ["top", "middle", "bottom"] },
+        "line_height": { "type": "number" }
+      }
+    },
+    "ImageProps": {
+      "type": "object",
+      "required": ["src", "alt", "fit"],
+      "properties": {
+        "src": { "type": "string", "description": "URL 또는 로컬 경로" },
+        "alt": { "type": "string" },
+        "fit": { "type": "string", "enum": ["cover", "contain", "fill"] },
+        "ai_prompt": { "type": "string", "description": "AI 이미지 생성 프롬프트 (미생성 시)" },
+        "border_radius": { "type": "number", "minimum": 0 }
+      }
+    },
+    "ShapeProps": {
+      "type": "object",
+      "required": ["shape_type", "fill"],
+      "properties": {
+        "shape_type": {
+          "type": "string",
+          "enum": ["rectangle", "circle", "triangle", "line", "arrow"]
+        },
+        "fill": { "type": "string" },
+        "stroke": { "type": "string" },
+        "stroke_width": { "type": "number", "minimum": 0 },
+        "border_radius": { "type": "number", "minimum": 0 }
+      }
+    },
+    "ChartProps": {
+      "type": "object",
+      "required": ["chart_type", "data"],
+      "properties": {
+        "chart_type": {
+          "type": "string",
+          "enum": ["bar", "line", "pie", "donut", "area"]
+        },
+        "data": {
+          "type": "object",
+          "required": ["labels", "datasets"],
+          "properties": {
+            "labels": { "type": "array", "items": { "type": "string" } },
+            "datasets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["label", "values"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "values": { "type": "array", "items": { "type": "number" } },
+                  "color": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "show_legend": { "type": "boolean", "default": true }
+      }
+    },
+    "TableProps": {
+      "type": "object",
+      "required": ["headers", "rows"],
+      "properties": {
+        "headers": { "type": "array", "items": { "type": "string" } },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "style": {
+          "type": "string",
+          "enum": ["striped", "bordered", "minimal"],
+          "default": "striped"
+        }
+      }
+    },
+    "Background": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["solid", "gradient", "image"] },
+        "color": { "type": "string" },
+        "gradient": {
+          "type": "object",
+          "properties": {
+            "from": { "type": "string" },
+            "to": { "type": "string" },
+            "direction": { "type": "number" }
+          },
+          "required": ["from", "to", "direction"]
+        },
+        "image": { "$ref": "#/$defs/ImageProps" }
+      }
+    }
+  }
+}

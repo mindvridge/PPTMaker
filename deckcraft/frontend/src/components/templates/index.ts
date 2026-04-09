@@ -1,0 +1,2 @@
+// Template gallery components
+export {};
