@@ -304,6 +304,45 @@ class GenerateImageRequest(BaseModel):
     size: Optional[str] = "1024x576"
 
 
+# ─── Edit request / response models ──────────────────────────────────
+
+
+class RefineRequest(BaseModel):
+    presentation: Presentation
+    slide_index: Optional[int] = None  # None이면 전체 PPT 대상
+    instruction: str
+
+
+class RefineResponse(BaseModel):
+    modified_slides: list[Slide]
+    changes_summary: str
+
+
+class BatchEditRequest(BaseModel):
+    presentation: Presentation
+    instructions: list[str]
+
+
+class SuggestRequest(BaseModel):
+    presentation: Presentation
+    slide_index: int = Field(ge=0)
+
+
+class Suggestion(BaseModel):
+    type: str  # "content" | "design" | "layout"
+    description: str
+    auto_fix: Optional[Slide] = None
+
+
+class SuggestResponse(BaseModel):
+    suggestions: list[Suggestion]
+
+
+class ChangeThemeRequest(BaseModel):
+    presentation: Presentation
+    new_style: str
+
+
 class ExportRequest(BaseModel):
     presentation: Presentation
 

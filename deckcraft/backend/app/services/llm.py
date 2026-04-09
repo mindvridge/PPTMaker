@@ -15,7 +15,9 @@ from typing import AsyncIterator
 import httpx
 
 from app.models.schemas import (
+    DesignSystem,
     Language,
+    Presentation,
     PresentationPlan,
     Slide,
     SlideOutline,
@@ -85,6 +87,61 @@ SYSTEM_PROMPT_REFINE = """\
 당신은 프레젠테이션 편집 전문가입니다. 기존 슬라이드 JSON과 사용자의 수정 명령을 받아 수정된 Slide JSON을 반환합니다.
 기존 요소의 id는 유지하고, 수정 명령에 따라 content, color, layout 등을 변경합니다.
 수정하지 않는 필드는 그대로 유지합니다.
+"""
+
+SYSTEM_PROMPT_REFINE_FULL = """\
+당신은 PPT 슬라이드 편집 전문가입니다.
+현재 슬라이드의 JSON과 사용자의 수정 요청을 받아, 수정된 JSON을 반환하세요.
+
+규칙:
+- 요청된 부분만 수정하고 나머지는 그대로 유지
+- position 좌표를 직접 변경하지 말 것 (layout_type 변경으로 대신)
+- 텍스트 수정은 직접 text_props.content를 변경
+- 스타일 변경은 design_system의 해당 값을 변경
+- 새 요소 추가 시 적절한 z_index 부여
+- 기존 요소의 id는 반드시 유지
+
+JSON 출력 형식:
+{
+  "modified_slides": [ ... (수정된 Slide JSON 배열) ],
+  "changes_summary": "변경 사항 한국어 요약"
+}
+"""
+
+SYSTEM_PROMPT_SUGGEST = """\
+당신은 프레젠테이션 품질 분석 전문가입니다.
+주어진 슬라이드를 분석하고 개선점을 제안합니다.
+
+분석 항목:
+- content: 텍스트 내용의 명확성, 분량, 흐름
+- design: 색상, 폰트 크기, 여백, 시각적 균형
+- layout: 레이아웃 타입의 적절성, 요소 배치
+
+JSON 출력 형식:
+{
+  "suggestions": [
+    { "type": "content"|"design"|"layout", "description": "개선 제안 (한국어)" }
+  ]
+}
+"""
+
+SYSTEM_PROMPT_THEME = """\
+당신은 프레젠테이션 디자인 시스템 전문가입니다.
+요청된 스타일에 맞는 새로운 DesignSystem을 생성하세요.
+
+규칙:
+- color_palette의 모든 색상은 #RRGGBB 형식
+- WCAG AA 대비율 4.5:1 이상 보장
+- text_primary와 background 사이 충분한 대비
+- 스타일 프리셋에 맞는 분위기 (modern_minimal: 깔끔, corporate: 격식, creative: 생동감, academic: 차분)
+- 폰트는 Pretendard 패밀리 유지
+
+JSON 출력 형식 (DesignSystem):
+{
+  "color_palette": { "primary": "#hex", "secondary": "#hex", "accent": "#hex", "background": "#hex", "surface": "#hex", "text_primary": "#hex", "text_secondary": "#hex" },
+  "fonts": { "title": "...", "subtitle": "...", "body": "...", "caption": "..." },
+  "style_preset": "..."
+}
 """
 
 SYSTEM_PROMPT_IMAGE = """\
@@ -405,6 +462,84 @@ class AsyncLLMClient:
         ]
         raw = await self._chat_completion(messages)
         return json.loads(raw)
+
+    # ── Phase 4: advanced editing methods ─────────────────────────
+
+    async def refine_presentation(
+        self,
+        presentation: Presentation,
+        slide_index: int | None,
+        instruction: str,
+    ) -> dict:
+        """프레젠테이션(또는 단일 슬라이드)을 자연어 명령으로 수정.
+
+        Returns dict with "modified_slides" and "changes_summary".
+        """
+        if slide_index is not None:
+            slides_json = presentation.slides[slide_index].model_dump_json(indent=2)
+            context = f"대상: 슬라이드 {slide_index + 1}\n{slides_json}"
+        else:
+            slides_json = json.dumps(
+                [s.model_dump(mode="json") for s in presentation.slides],
+                ensure_ascii=False,
+                indent=2,
+            )
+            context = f"전체 슬라이드 ({len(presentation.slides)}장):\n{slides_json}"
+
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT_REFINE_FULL},
+            {
+                "role": "user",
+                "content": (
+                    f"디자인 시스템:\n{presentation.design_system.model_dump_json(indent=2)}\n\n"
+                    f"{context}\n\n"
+                    f"수정 명령: {instruction}"
+                ),
+            },
+        ]
+        raw = await self._chat_completion(messages)
+        return json.loads(raw)
+
+    async def suggest_improvements(
+        self,
+        presentation: Presentation,
+        slide_index: int,
+    ) -> dict:
+        """슬라이드의 개선점을 분석하여 제안."""
+        slide = presentation.slides[slide_index]
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT_SUGGEST},
+            {
+                "role": "user",
+                "content": (
+                    f"프레젠테이션 제목: {presentation.title}\n"
+                    f"디자인 시스템: {presentation.design_system.model_dump_json()}\n\n"
+                    f"분석 대상 슬라이드 (#{slide_index + 1}):\n"
+                    f"{slide.model_dump_json(indent=2)}"
+                ),
+            },
+        ]
+        raw = await self._chat_completion(messages)
+        return json.loads(raw)
+
+    async def generate_new_theme(
+        self,
+        new_style: str,
+        current_design: DesignSystem,
+    ) -> DesignSystem:
+        """새로운 스타일에 맞는 DesignSystem을 생성."""
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT_THEME},
+            {
+                "role": "user",
+                "content": (
+                    f"요청 스타일: {new_style}\n\n"
+                    f"현재 디자인 시스템 (참고용):\n{current_design.model_dump_json(indent=2)}"
+                ),
+            },
+        ]
+        raw = await self._chat_completion(messages)
+        return DesignSystem.model_validate_json(raw)
 
 
 # ─── Module-level singleton ───────────────────────────────────────────
