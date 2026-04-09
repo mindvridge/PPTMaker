@@ -129,7 +129,7 @@ def _set_korean_font(run, font_name: str = "Pretendard") -> None:
 
 def _ns_attr() -> str:
     """OxmlElement에 필요한 namespace 속성."""
-    return f'xmlns:a="{nsmap["a"]}"'
+    return 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
 
 
 # ─── Markdown-subset parser ──────────────────────────────────────────

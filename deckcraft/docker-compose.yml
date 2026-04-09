@@ -6,25 +6,54 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      - NEXT_PUBLIC_API_URL=http://backend:8080
     depends_on:
       - backend
+    restart: unless-stopped
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8080:8080"
     environment:
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
+      - VLLM_API_KEY=${VLLM_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379
+      - COMFYUI_BASE_URL=${COMFYUI_BASE_URL:-}
+      - FAL_API_KEY=${FAL_API_KEY:-}
+      - EXPORT_DIR=/tmp/deckcraft/exports
     volumes:
-      - ./backend/app:/app/app
+      - ./backend/app/templates:/app/app/templates
+      - ./backend/app/fonts:/app/app/fonts
+      - deckcraft_exports:/tmp/deckcraft
     depends_on:
       - redis
+    restart: unless-stopped
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
+      - VLLM_API_KEY=${VLLM_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379
+      - COMFYUI_BASE_URL=${COMFYUI_BASE_URL:-}
+      - FAL_API_KEY=${FAL_API_KEY:-}
+    volumes:
+      - deckcraft_exports:/tmp/deckcraft
+    depends_on:
+      - redis
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -32,6 +61,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    restart: unless-stopped
 
 volumes:
   redis_data:
+  deckcraft_exports:

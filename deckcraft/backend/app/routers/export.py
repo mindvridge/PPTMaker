@@ -107,10 +107,19 @@ async def export_pptx(req: ExportRequest):
     )
     filename = f"{safe_title}.pptx"
 
+    # RFC 5987: use ASCII fallback + UTF-8 encoded filename*
+    from urllib.parse import quote
+    ascii_fallback = "presentation.pptx"
+    encoded = quote(filename)
+    content_disp = (
+        f"attachment; filename=\"{ascii_fallback}\"; "
+        f"filename*=UTF-8''{encoded}"
+    )
+
     return Response(
         content=pptx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": content_disp},
     )
 
 
