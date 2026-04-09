@@ -1,2 +1,3 @@
-// Fabric.js canvas editor components
-export {};
+export { SlideCanvas } from "./SlideCanvas";
+export { Toolbar } from "./Toolbar";
+export { StatusBar } from "./StatusBar";

@@ -5,10 +5,36 @@
 :root {
   --foreground-rgb: 15, 23, 42;
   --background-rgb: 255, 255, 255;
+  --toolbar-h: 48px;
+  --statusbar-h: 28px;
+  --left-panel-w: 240px;
+  --right-panel-w: 320px;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
-  font-family: "Pretendard", sans-serif;
+  font-family: "Pretendard", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* Custom scrollbar */
+.panel-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+/* Canvas wrapper */
+.canvas-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  overflow: hidden;
 }

@@ -1,2 +1,2 @@
-// Side panels (slide list, properties, AI chat)
-export {};
+export { SlideListPanel } from "./SlideListPanel";
+export { RightPanel } from "./RightPanel";
